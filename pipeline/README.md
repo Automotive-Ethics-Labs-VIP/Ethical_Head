@@ -43,10 +43,10 @@ pipeline/
 ├── tests/
 │   ├── test_extraction.py
 │   └── test_mock.py
-└── scripts/
+├── scripts/
 │   ├── extract.py
 │   └── validate.py
-├── README.md
+└── README.md
 ```
 
 ## Mock Data

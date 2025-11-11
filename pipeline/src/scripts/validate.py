@@ -1,31 +1,45 @@
-from env.carla_connector import CarlaConnector
-from env.state_extractor import StateExtractor
+import argparse
+import numpy as np
 from validation.validator import Validator
 from validation.statistics import Statistics
 
 def main():
-    connector = CarlaConnector('config/config.yaml')
-    connector.connect()
-    world = connector.get_world()
+    parser = argparse.ArgumentParser(description="Validate extracted state vectors.")
+    parser.add_argument("--input", default="state_vectors.npy",
+                        help="Path to NumPy file containing extracted state vectors")
+    parser.add_argument("--config", default="config/config.yaml",
+                        help="Path to configuration YAML")
+    parser.add_argument("--report", default="validation_report.txt",
+                        help="Path to write validation results")
+    args = parser.parse_args()
 
-    # assume ego_vehicle is obtained from the world
-    ego_vehicle = world.get_actors().filter('vehicle.*')[0]
-
-    extractor = StateExtractor(connector, config_path='config/config.yaml')
-    extractor.initialize()
-
-    # extract the full state vector (implement extract_state per issue #4)
-    state_vector = extractor.extract_state(ego_vehicle)
-
-    validator = Validator('config/config.yaml')
+    # Load state vectors
+    states = np.load(args.input)
+    validator = Validator(args.config)
     stats = Statistics()
 
-    validator.validate(state_vector)  # raises if invalid
-    stats.update(state_vector)
+    errors = []
+    for idx, state in enumerate(states):
+        try:
+            validator.validate(state)
+            stats.update(state)
+        except (ValueError, TypeError) as e:
+            errors.append(f"State {idx}: {str(e)}")
 
-    summary = stats.summary()
-    stats.save('state_stats.json')
-    print(summary)
+    # Write validation report
+    with open(args.report, "w") as f:
+        if errors:
+            f.write("Validation failed\n")
+            f.write(f"{len(errors)} invalid states out of {len(states)}\n\n")
+            for line in errors:
+                f.write(line + "\n")
+        else:
+            f.write("Validation passed\n")
+            f.write(f"All {len(states)} states are valid\n\n")
+        f.write("Summary statistics for valid states:\n")
+        f.write(str(stats.summary()))
+
+    print(f"Validation report saved to {args.report}")
 
 if __name__ == "__main__":
     main()

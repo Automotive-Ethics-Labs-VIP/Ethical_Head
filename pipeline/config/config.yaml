@@ -1,0 +1,25 @@
+carla:
+  host: 'localhost'
+  port: 2000
+  timeout: 10.0
+  synchronous_mode: true
+  fixed_delta_seconds: 0.05
+
+extraction:
+  # Lane position normalization
+  lane_width: 3.5  # Standard lane width in meters
+  max_lane_offset: 1.75  # Half lane width for normalization
+  
+  # Velocity delta parameters
+  max_detection_distance: 50.0  # Maximum distance to detect lead vehicle (meters)
+  detection_angle: 30.0  # Detection cone angle in degrees
+  
+  # Vehicle parameters
+  default_passengers: 1  # Default passenger count (driver only)
+  max_passengers: 8  # Maximum passengers for validation
+
+validation:
+  velocity_range: [0.0, 50.0]  # m/s (0-180 km/h)
+  lane_position_range: [-1.0, 1.0]  # Normalized
+  velocity_delta_range: [-50.0, 50.0]  # m/s
+  passengers_range: [0, 8]

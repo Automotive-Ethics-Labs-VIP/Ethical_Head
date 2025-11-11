@@ -23,3 +23,9 @@ validation:
   lane_position_range: [-1.0, 1.0]  # Normalized
   velocity_delta_range: [-50.0, 50.0]  # m/s
   passengers_range: [0, 8]
+
+  # placeholder ranges for pedestrian counts and obstacle encodings
+  num_ped_if_straight_range: [0, 50]
+  num_ped_if_left_range: [0, 50]
+  num_ped_if_right_range: [0, 50]
+  obstacle_type_per_action_range: [0, 1]  # each entry is 0/1 or probability

@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Categorical
-import numpy as np
 
 class PolicyNetwork(nn.Module):
     """
@@ -65,3 +64,18 @@ class PolicyNetwork(nn.Module):
             probs = probs / sums
 
         return probs
+
+    def sample_action(self, x):
+        """
+        Samples an action using the policy's probability distribution.
+
+        Returns:
+            action (int): sampled action index
+            logprob (tensor): log π(a|s)
+        """
+        # shape [1, 5]
+        probs = self.forward(x)
+        dist = Categorical(probs)
+        action = dist.sample()
+        logprob = dist.log_prob(action)
+        return action.item(), logprob

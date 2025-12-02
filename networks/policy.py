@@ -43,14 +43,25 @@ class PolicyNetwork(nn.Module):
         Returns:
             Tensor of shape [batch, 5] representing action probabilities.
         """
-        # ensure batch dimension
+        # validate input
+        if x.shape[-1] != 40:
+            raise ValueError(f"Input to PolicyNetwork must have 40 features, got shape {tuple(x.shape)}")
+
+        # check batch dimension exists
         if x.dim() == 1:
             x = x.unsqueeze(0)
 
+        # forward pass
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         logits = self.fc3(x)
 
-        # logits to probability distribution
+        # softamx -> probabilities
         probs = self.softmax(logits)
+
+        # validate probalities
+        sums = probs.sum(dim=-1, keepdim=True)
+        if not torch.allclose(sums, torch.ones_like(sums), atol=1e-6):
+            probs = probs / sums
+
         return probs

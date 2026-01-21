@@ -84,3 +84,63 @@ All packages tested compatible with Python 3.10 and each other:
 - Policy: 4,869 parameters
 - Value: ~3,500 parameters  
 - Reward: ~4,000 parameters
+
+
+**Anticpated Structure**
+project-root/
+│
+├── networks/                 # Neural networks only (pure modules)
+│   ├── policy.py
+│   ├── value.py
+│   ├── reward_model.py
+│   └── __init__.py
+│
+├── envs/                     # Environment + state construction
+│   ├── carla_env.py
+│   ├── state_encoder.py
+│   └── __init__.py
+│
+├── data/                     # Offline data (not code)
+│   ├── rollouts/             # Saved trajectories
+│   ├── preferences/          # Human comparison labels
+│   └── checkpoints/
+│
+├── buffers/                  # Experience storage
+│   ├── rollout_buffer.py
+│   └── preference_buffer.py
+│
+├── algorithms/               # Learning algorithms (NO env logic)
+│   ├── ppo.py
+│   ├── gae.py
+│   ├── reward_training.py
+│   └── __init__.py
+│
+├── training/                 # Orchestration scripts
+│   ├── collect_rollouts.py
+│   ├── train_reward_model.py
+│   ├── train_policy.py
+│   └── main_loop.py
+│
+├── evaluation/
+│   ├── metrics.py
+│   ├── eval_policy.py
+│   └── human_eval.py
+│
+├── utils/
+│   ├── config.py
+│   ├── logger.py
+│   ├── seeding.py
+│   └── kl_divergence.py
+│
+├── configs/
+│   ├── ppo.yaml
+│   ├── reward_model.yaml
+│   └── env.yaml
+│
+├── scripts/                  # CLI entry points
+│   ├── train_sft.py
+│   ├── train_rlhf.py
+│   └── evaluate.py
+│
+├── requirements.txt
+└── README.md

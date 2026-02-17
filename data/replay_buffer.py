@@ -104,6 +104,9 @@ class ReplayBuffer:
             gamma=gamma, 
             gae_lambda=gae_lambda
         )
+
+        # Add normalization (standard PPO practice)
+        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
         
         return advantages, returns
 

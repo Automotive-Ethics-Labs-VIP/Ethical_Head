@@ -84,3 +84,32 @@ All packages tested compatible with Python 3.10 and each other:
 - Policy: 4,869 parameters
 - Value: ~3,500 parameters  
 - Reward: ~4,000 parameters
+
+
+## Ethical Configuration
+
+The system supports three reward components:
+
+1. **R_base (α=0.3)**: Safety heuristics
+2. **R_learned (β=0.7)**: Learned from human preferences
+3. **R_explicit (optional)**: Explicit ethical theories
+
+### Default (Learned Only):
+- Ethics implicitly encoded in human preference labels
+- Reflects whatever ethical framework humans used when labeling
+
+### With Explicit Ethics:
+- Adds formal utilitarian, Kantian, and virtue ethics
+- Provides theoretical grounding and consistency
+- Can override learned biases
+
+### Example:
+```python
+# Utilitarian-leaning
+config = Config()
+config.use_explicit_ethics = False
+
+# With ethical theory enforcement
+config = Config()
+config.use_explicit_ethics = True
+```

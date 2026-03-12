@@ -62,6 +62,12 @@ class Config:
     alpha: float = 0.3               # Weight for R_base (safety rewards)
     beta: float = 0.7                # Weight for R_learned (ethical rewards)
     
+    # Optional: Explicit ethical theory weights (if use_explicit_ethics=True)
+    use_explicit_ethics: bool = False  # Enable explicit ethical scoring
+    gamma: float = 0.0               # Weight for explicit ethics (if enabled)
+    # Note: If use_explicit_ethics=True, weights become:
+    #   R_total = 0.3*R_base + 0.4*R_learned + 0.3*R_explicit
+    
     # =========================================================================
     # Reward Model Training (Bradley-Terry)
     # =========================================================================

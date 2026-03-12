@@ -207,15 +207,17 @@ class RLTrainer:
         self,
         states: torch.Tensor,
         actions: torch.Tensor,
-        base_rewards: torch.Tensor
+        base_rewards: torch.Tensor,
+        use_explicit_ethics: bool = False
     ) -> torch.Tensor:
         """
-        Compute combined reward: R_total = α * R_base + β * R_learned
+        Compute combined reward: R_total = α * R_base + β * R_learned (+ γ * R_explicit)
         
         Args:
             states: Batch of states [T, 40]
             actions: Batch of actions [T]
             base_rewards: Base safety rewards [T]
+            use_explicit_ethics: Whether to include explicit ethical scoring
         
         Returns:
             Combined rewards [T]
@@ -224,11 +226,49 @@ class RLTrainer:
         with torch.no_grad():
             learned_rewards = self.reward_model(states, actions)
         
-        # Combine with weights from config
-        combined = (
-            self.config.alpha * base_rewards +
-            self.config.beta * learned_rewards
-        )
+        if use_explicit_ethics:
+            # Import ethical theories (only if needed)
+            try:
+                from utils.ethical_theories import CombinedEthicalScorer
+                
+                # Compute explicit ethical scores
+                ethical_scorer = CombinedEthicalScorer(
+                    utilitarian_weight=0.4,
+                    kantian_weight=0.4,
+                    virtue_weight=0.2
+                )
+                
+                explicit_ethics = []
+                for state, action in zip(states, actions):
+                    state_np = state.cpu().numpy()
+                    action_int = action.item() if isinstance(action, torch.Tensor) else action
+                    
+                    score_dict = ethical_scorer.score_action(state_np, action_int)
+                    explicit_ethics.append(score_dict['combined'])
+                
+                explicit_ethics = torch.FloatTensor(explicit_ethics).to(self.device)
+                
+                # Three-way combination:
+                # 30% base safety + 40% learned + 30% explicit ethics
+                combined = (
+                    0.3 * base_rewards +
+                    0.4 * learned_rewards +
+                    0.3 * explicit_ethics
+                )
+                
+            except ImportError:
+                print("Warning: ethical_theories module not found. Using learned rewards only.")
+                # Fallback to original two-way combination
+                combined = (
+                    self.config.alpha * base_rewards +
+                    self.config.beta * learned_rewards
+                )
+        else:
+            # Original two-way combination (α * base + β * learned)
+            combined = (
+                self.config.alpha * base_rewards +
+                self.config.beta * learned_rewards
+            )
         
         return combined
     
@@ -251,7 +291,12 @@ class RLTrainer:
         dones = dones.to(self.device)
         
         # Compute combined rewards (base + learned ethical)
-        combined_rewards = self.compute_combined_rewards(states, actions, rewards)
+        combined_rewards = self.compute_combined_rewards(
+            states, 
+            actions, 
+            rewards,
+            use_explicit_ethics=self.config.use_explicit_ethics
+        )
         
         # Get bootstrap value for last state
         with torch.no_grad():

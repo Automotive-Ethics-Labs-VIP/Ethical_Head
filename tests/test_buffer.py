@@ -51,9 +51,10 @@ def test_gae_computation():
     
     assert adv.shape == (3,)
     assert returns.shape == (3,)
-    # Verify basic property: Return ~ Reward + Gamma * NextVal
-    # Since Value estimates were 0, Advantages should be roughly equal to Returns (minus baseline 0)
-    assert torch.allclose(adv, returns) 
+    # Verify basic property: Advantages are normalized
+    # ReplayBuffer.compute_advantages_and_returns normalizes advantages, so they should roughly have mean 0 and std 1
+    assert torch.allclose(adv.mean(), torch.tensor(0.0), atol=1e-5)
+    assert torch.allclose(adv.std(), torch.tensor(1.0), atol=1e-4)
     
     print("✓ GAE integration passed")
 

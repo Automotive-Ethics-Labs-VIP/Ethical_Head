@@ -64,7 +64,7 @@ class Config:
     
     # Optional: Explicit ethical theory weights (if use_explicit_ethics=True)
     use_explicit_ethics: bool = False  # Enable explicit ethical scoring
-    gamma: float = 0.0               # Weight for explicit ethics (if enabled)
+    explicit_weight: float = 0.0               # Weight for explicit ethics (if enabled)
     # Note: If use_explicit_ethics=True, weights become:
     #   R_total = 0.3*R_base + 0.4*R_learned + 0.3*R_explicit
     

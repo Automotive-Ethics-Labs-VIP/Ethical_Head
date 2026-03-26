@@ -17,11 +17,17 @@ Loss:
     Binary cross-entropy between predicted preference and actual preference
 """
 
+import sys
+
 import torch
 import torch.nn as nn
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 import numpy as np
+
+# Add project root to Python path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 
 from networks.reward import RewardModel
 from algorithms.BT import bradley_terry_loss, trajectory_reward

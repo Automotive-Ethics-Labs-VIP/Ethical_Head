@@ -49,7 +49,7 @@ Here's how to feed that input into the system to get an action:
 from ethical_agent import EthicalAgent
 
 # 1. Load the trained brain
-agent = EthicalAgent('checkpoints/trained_model.pt')
+agent = EthicalAgent('checkpoints/test_agent_checkpoint.pt')
 
 # 2. Get the 40-number input from CARLA (example snapshot)
 # This includes velocity, pedestrians, obstacles, etc.

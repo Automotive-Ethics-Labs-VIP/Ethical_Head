@@ -308,11 +308,12 @@ class RLTrainer:
                 last_state = states[-1]
                 last_value = self.value_net(last_state).squeeze().item()
         
-        # Compute advantages and returns using GAE
+        # Compute advantages and returns using GAE with combined rewards
         advantages, returns = self.buffer.compute_advantages_and_returns(
             last_value=last_value,
             gamma=self.config.gamma,
-            gae_lambda=self.config.gae_lambda
+            gae_lambda=self.config.gae_lambda,
+            rewards=combined_rewards
         )
         
         advantages = advantages.to(self.device)
@@ -545,9 +546,11 @@ class RLTrainer:
         if self.env_interface is not None:
             return self.env_interface.step(action)
         else:
-            # Mock environment
+            # Mock environment: structured reward based on state deviation from neutral
+            # Rewards the agent for keeping state[0] (speed proxy) near zero
+            # and applies a small penalty for high-magnitude actions.
             next_state = np.random.randn(40).astype(np.float32)
-            reward = np.random.randn()  # Random reward
+            reward = float(np.clip(1.0 - 0.5 * abs(state[0]), -1.0, 1.0))
             done = np.random.random() < 0.01  # 1% chance of episode end
             info = {}
             return next_state, reward, done, info

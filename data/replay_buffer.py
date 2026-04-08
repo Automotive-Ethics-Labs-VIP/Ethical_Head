@@ -75,15 +75,17 @@ class ReplayBuffer:
         
         return states_tensor, actions_tensor, rewards_tensor, values_tensor, log_probs_tensor, dones_tensor
 
-    def compute_advantages_and_returns(self, last_value: float, gamma: float = 0.99, gae_lambda: float = 0.95):
+    def compute_advantages_and_returns(self, last_value: float, gamma: float = 0.99, gae_lambda: float = 0.95, rewards: torch.Tensor = None):
         """
         Computes GAE advantages and returns for the stored trajectory.
-        
+
         Args:
             last_value: Value estimate of the state AFTER the last step (for bootstrapping).
             gamma: Discount factor.
             gae_lambda: GAE smoothing parameter.
-            
+            rewards: Optional pre-computed rewards tensor to use instead of self.rewards.
+                     Pass combined_rewards here to include the reward model signal.
+
         Returns:
             advantages: Tensor [T]
             returns: Tensor [T]
@@ -92,8 +94,11 @@ class ReplayBuffer:
         # self.values has T elements.
         values_list = self.values + [last_value]
         values_tensor = torch.tensor(values_list, dtype=torch.float32)
-        
-        rewards_tensor = torch.tensor(self.rewards, dtype=torch.float32)
+
+        if rewards is not None:
+            rewards_tensor = rewards.cpu() if isinstance(rewards, torch.Tensor) else torch.tensor(rewards, dtype=torch.float32)
+        else:
+            rewards_tensor = torch.tensor(self.rewards, dtype=torch.float32)
         dones_tensor = torch.tensor(self.dones, dtype=torch.float32)
         
         # Call GAE function

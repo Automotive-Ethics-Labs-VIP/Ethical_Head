@@ -93,7 +93,7 @@ class EthicalAgent:
             raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
         
         try:
-            checkpoint = torch.load(checkpoint_path, map_location=self.device)
+            checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=False)
             
             # Load policy (required)
             if 'policy_state_dict' in checkpoint:

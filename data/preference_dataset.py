@@ -53,6 +53,8 @@ class PreferenceDataset:
         def _to_list(item):
             if isinstance(item, torch.Tensor):
                 return item.tolist()
+            if hasattr(item, 'tolist'):  # catches numpy ndarray and any other array-like
+                return item.tolist()
             if isinstance(item, (list, tuple)):
                  # handle nested tensors just in case
                  return [_to_list(x) for x in item]

@@ -15,7 +15,16 @@ from ethical_agent import EthicalAgent
 import numpy as np
 
 # Import scenarios from creation script
-from create_edge_case_preferences import scenarios, decisions
+import json
+
+def load_split_scenarios(split='test'):
+    """Load scenarios/decisions from the saved train/test split."""
+    with open('data/splits/train_test_split.json', 'r') as f:
+        data = json.load(f)
+
+    scenarios = data[split]['scenarios']
+    decisions = data[split]['decisions']
+    return scenarios, decisions
 
 def main():
     parser = argparse.ArgumentParser()
@@ -38,6 +47,11 @@ def main():
     correct = 0
     total = 0
     
+    scenarios, decisions = load_split_scenarios('test')
+
+    print(f"\nTesting on {len(scenarios)} HELD-OUT scenarios...\n")
+    print("Scenario IDs in test set:", list(scenarios.keys()))
+
     for scenario_id, state in scenarios.items():
         expected_action = decisions[scenario_id][args.theory]
         predicted_action = agent.get_action(state)

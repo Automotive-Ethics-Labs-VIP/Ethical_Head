@@ -87,16 +87,38 @@ decisions = {
 }
 
 
-def create_utilitarian_preferences():
+def load_split_scenarios(split='train'):
+    """Load either train or test scenarios."""
+    import json
+    
+    with open('data/splits/train_test_split.json', 'r') as f:
+        data = json.load(f)
+    
+    scenarios = data[split]['scenarios']
+    decisions = data[split]['decisions']
+    
+    # Convert back to expected format
+    scenarios = {k: v for k, v in scenarios.items()}
+    decisions = {k: v for k, v in decisions.items()}
+    
+    return scenarios, decisions
+
+
+def create_utilitarian_preferences(use_split=True):
     """
     Create preference dataset where Utilitarian choice is preferred.
     This teaches the model utilitarian ethics.
     """
+    if use_split:
+        scens, decs = load_split_scenarios('train')
+    else:
+        scens, decs = scenarios, decisions  # Use all
+
     dataset = PreferenceDataset()
     
-    for scenario_id, state in scenarios.items():
-        util_action = decisions[scenario_id]['utilitarian']
-        kant_action = decisions[scenario_id]['kantian']
+    for scenario_id, state in scens.items():
+        util_action = decs[scenario_id]['utilitarian']
+        kant_action = decs[scenario_id]['kantian']
         
         # Only create preference if theories disagree
         if util_action != kant_action:
@@ -119,16 +141,21 @@ def create_utilitarian_preferences():
     return dataset
 
 
-def create_kantian_preferences():
+def create_kantian_preferences(use_split=True):
     """
     Create preference dataset where Kantian choice is preferred.
     This teaches the model Kantian ethics.
     """
+    if use_split:
+        scens, decs = load_split_scenarios('train')
+    else:
+        scens, decs = scenarios, decisions  # Use all
+    
     dataset = PreferenceDataset()
     
-    for scenario_id, state in scenarios.items():
-        util_action = decisions[scenario_id]['utilitarian']
-        kant_action = decisions[scenario_id]['kantian']
+    for scenario_id, state in scens.items():
+        util_action = decs[scenario_id]['utilitarian']
+        kant_action = decs[scenario_id]['kantian']
         
         # Only create preference if theories disagree
         if util_action != kant_action:
@@ -151,16 +178,21 @@ def create_kantian_preferences():
     return dataset
 
 
-def create_mixed_preferences(util_weight=0.5):
+def create_mixed_preferences(util_weight=0.5, use_split=True):
     """
     Create mixed preference dataset.
     util_weight: 0.0 = pure Kantian, 1.0 = pure Utilitarian, 0.5 = balanced
     """
+    if use_split:
+        scens, decs = load_split_scenarios('train')
+    else:
+        scens, decs = scenarios, decisions
+
     dataset = PreferenceDataset()
     
-    for scenario_id, state in scenarios.items():
-        util_action = decisions[scenario_id]['utilitarian']
-        kant_action = decisions[scenario_id]['kantian']
+    for scenario_id, state in scens.items():
+        util_action = decs[scenario_id]['utilitarian']
+        kant_action = decs[scenario_id]['kantian']
         
         # Only create preference if theories disagree
         if util_action != kant_action:

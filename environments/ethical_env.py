@@ -61,10 +61,10 @@ POLICY_ACTION_TO_LABEL = {
 INVALID_POLICY_ACTIONS = {1, 4}
 
 # ── Class-weighted rewards ────────────────────────────────────────────────────
-# Dataset label frequencies: maintain=30%, swerve_left=50%, swerve_right=20%
+# Dataset label frequencies: maintain=32%, swerve_left=42%, swerve_right=26%
 # Inverse-frequency weights normalised so mean weight = 1.0
 # This compensates for the imbalance so swerve_left doesn't get overshadowed.
-_LABEL_FREQ  = {0: 0.30, 1: 0.50, 2: 0.20}
+_LABEL_FREQ = {0: 0.32, 1: 0.42, 2: 0.26}
 _RAW_WEIGHTS = {k: 1.0 / v for k, v in _LABEL_FREQ.items()}
 _MEAN_WEIGHT = sum(_RAW_WEIGHTS.values()) / len(_RAW_WEIGHTS)
 CLASS_REWARD_WEIGHTS = {k: v / _MEAN_WEIGHT for k, v in _RAW_WEIGHTS.items()}

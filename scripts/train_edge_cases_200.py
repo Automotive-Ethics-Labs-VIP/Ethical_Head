@@ -28,6 +28,8 @@ def main():
     parser.add_argument("--timesteps", type=int, default=500_000)
     parser.add_argument("--device",    type=str, default="cpu")
     parser.add_argument("--checkpoint-dir", type=str, default=None)
+    parser.add_argument("--direct-supervision", action="store_true",
+                        help="Bypass preference-based reward model and use ground-truth direct labels.")
     args = parser.parse_args()
 
     # Load preferences
@@ -53,6 +55,7 @@ def main():
         device=args.device,
         theory=args.theory,
         split_path="data/splits/train_test_split.json",
+        direct_supervision=args.direct_supervision,
     )
 
     trainer.train(total_timesteps=args.timesteps, preference_dataset=preferences)

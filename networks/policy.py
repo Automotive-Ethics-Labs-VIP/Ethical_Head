@@ -9,9 +9,9 @@ class PolicyNetwork(nn.Module):
 
     Architecture:
         Input: 40-dim state
-        Hidden1: Linear(40 → 64) + ReLU
-        Hidden2: Linear(64 → 32) + ReLU
-        Output: Linear(32 → 5) + Softmax over action dimension
+        Hidden1: Linear(40 → 256) + ReLU
+        Hidden2: Linear(256 → 128) + ReLU
+        Output: Linear(128 → 5) + Softmax over action dimension
 
     Output:
         A probability distribution over 5 actions (shape: [batch, 5]).
@@ -23,11 +23,11 @@ class PolicyNetwork(nn.Module):
         #### Define layers
         
         # hidden layers
-        self.fc1 = nn.Linear(40, 64)
-        self.fc2 = nn.Linear(64, 32)
+        self.fc1 = nn.Linear(40, 256)
+        self.fc2 = nn.Linear(256, 128)
         
         # output logits for actions
-        self.fc3 = nn.Linear(32, 5)
+        self.fc3 = nn.Linear(128, 5)
 
         # softmax for cleaner forward pass
         self.softmax = nn.Softmax(dim=-1)

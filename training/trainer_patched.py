@@ -44,10 +44,12 @@ class RLTrainer:
         device: str = "cpu",
         theory: str = "utilitarian",
         split_path: str = "data/splits/train_test_split.json",
+        direct_supervision: bool = False,
     ):
         self.config = config
         self.device = device
         self.theory = theory
+        self.direct_supervision = direct_supervision
 
         torch.manual_seed(config.seed)
         np.random.seed(config.seed)
@@ -207,6 +209,9 @@ class RLTrainer:
         base_rewards: torch.Tensor,
     ) -> torch.Tensor:
 
+        if self.direct_supervision:
+            return base_rewards
+
         with torch.no_grad():
             learned_rewards = self.reward_model(states, actions)
 
@@ -308,7 +313,7 @@ class RLTrainer:
         checkpoint_dir = Path(self.config.checkpoint_dir)
 
         # ── Reward model warm-up (1× epochs, not 3×) ─────────────────────────
-        if preference_dataset and len(preference_dataset) > 0:
+        if not self.direct_supervision and preference_dataset and len(preference_dataset) > 0:
             print("Pre-training reward model (warm-up)...")
             balanced = self._balance_preferences(preference_dataset)
             warmup_metrics = self.reward_trainer.train_on_preferences(
@@ -332,7 +337,8 @@ class RLTrainer:
             env_acc        = rollout_stats["env_accuracy"]
 
             # Reward model update (less frequent to prevent overfitting)
-            if (self.num_updates % RM_UPDATE_FREQ == 0
+            if (not self.direct_supervision and 
+                self.num_updates % RM_UPDATE_FREQ == 0
                     and preference_dataset
                     and len(preference_dataset) > 0):
 

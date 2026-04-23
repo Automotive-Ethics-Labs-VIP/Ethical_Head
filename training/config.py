@@ -33,9 +33,9 @@ class Config:
     # =========================================================================
     state_dim: int = 40
     action_dim: int = 5
-    policy_hidden_dims: Tuple[int, ...] = (64, 32)
-    value_hidden_dims: Tuple[int, ...] = (64, 32)
-    reward_hidden_dims: Tuple[int, ...] = (64, 32)
+    policy_hidden_dims: Tuple[int, ...] = (256, 128)
+    value_hidden_dims: Tuple[int, ...] = (256, 128)
+    reward_hidden_dims: Tuple[int, ...] = (256, 128)
     
     # =========================================================================
     # PPO Hyperparameters
@@ -43,7 +43,7 @@ class Config:
     gamma: float = 0.99              # Discount factor for future rewards
     gae_lambda: float = 0.95         # GAE smoothing parameter (λ)
     clip_epsilon: float = 0.2        # PPO clipping parameter (ε)
-    entropy_coef: float = 0.01       # Entropy bonus coefficient
+    entropy_coef: float = 0.03       # Elevated entropy to prevent early collapse on tabular features
     value_loss_coef: float = 0.5     # Weight for value loss in total loss
     max_grad_norm: float = 0.5       # Gradient clipping threshold
     

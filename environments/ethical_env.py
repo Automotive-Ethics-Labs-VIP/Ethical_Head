@@ -60,17 +60,7 @@ POLICY_ACTION_TO_LABEL = {
 # Actions that are never correct in the dataset
 INVALID_POLICY_ACTIONS = {1, 4}
 
-# ── Class-weighted rewards ────────────────────────────────────────────────────
-# Dataset label frequencies: maintain=32%, swerve_left=42%, swerve_right=26%
-# Inverse-frequency weights normalised so mean weight = 1.0
-# This compensates for the imbalance so swerve_left doesn't get overshadowed.
-_LABEL_FREQ = {0: 0.32, 1: 0.42, 2: 0.26}
-_RAW_WEIGHTS = {k: 1.0 / v for k, v in _LABEL_FREQ.items()}
-_MEAN_WEIGHT = sum(_RAW_WEIGHTS.values()) / len(_RAW_WEIGHTS)
-CLASS_REWARD_WEIGHTS = {k: v / _MEAN_WEIGHT for k, v in _RAW_WEIGHTS.items()}
-# Resulting weights: maintain≈1.11, swerve_left≈0.67, swerve_right≈1.67
-# (swerve_right boosted most since it's rarest; left slightly dampened since
-#  it already dominates — this balances the gradient signal)
+# Class weights removed for direct utilitarian logic
 
 
 class EthicalScenarioEnv:
@@ -111,45 +101,47 @@ class EthicalScenarioEnv:
 
         print(f"EthicalScenarioEnv: {len(self.scenario_ids)} {split} scenarios "
               f"| theory={theory}")
-        print(f"  Class reward weights: "
-              + "  ".join(f"label{k}={v:.2f}" for k, v in CLASS_REWARD_WEIGHTS.items()))
 
     # -------------------------------------------------------------------------
     def reset(self) -> np.ndarray:
         self.current_sid   = random.choice(self.scenario_ids)
         self.current_label = self.decisions[self.current_sid][self.theory]
         self._step_count   = 0
-        return np.array(self.scenarios[self.current_sid], dtype=np.float32)
+
+        state = np.array(self.scenarios[self.current_sid], dtype=np.float32)
+        return state
 
     # -------------------------------------------------------------------------
     def step(self, action: int) -> Tuple[np.ndarray, float, bool, Dict]:
         self._step_count += 1
 
         predicted_label = POLICY_ACTION_TO_LABEL[action]
-        true_label      = self.current_label
-        weight          = CLASS_REWARD_WEIGHTS[true_label]
+        state = self.scenarios[self.current_sid]
+        true_label = self.current_label
 
-        if action in INVALID_POLICY_ACTIONS:
-            # Actions 1/4 never appear in data — hard penalty
-            reward = -1.0
+        if self.theory == "utilitarian":
+            if action in INVALID_POLICY_ACTIONS:
+                reward = -20.0
+            else:
+                num_ped_straight = state[4]
+                num_ped_left     = state[5]
+                num_ped_right    = state[6]
 
-        elif predicted_label == true_label:
-            # Correct — scale reward by inverse class frequency
-            reward = +weight
-
+                if predicted_label == 0:
+                    reward = -float(num_ped_straight)
+                elif predicted_label == 1:
+                    reward = -float(num_ped_left)
+                elif predicted_label == 2:
+                    reward = -float(num_ped_right)
+                else:
+                    reward = -20.0
         else:
-            # Wrong direction — penalise proportionally
-            base_penalty = -weight * 0.5
-
-            # Extra penalty for confusing swerve directions (left vs right)
-            # This is the main bug we're fixing: model was guessing swerve_right
-            # for swerve_left scenarios because both are "swerve" actions
-            swerve_confusion = (
-                (true_label == 1 and predicted_label == 2) or  # left predicted as right
-                (true_label == 2 and predicted_label == 1)     # right predicted as left
-            )
-            confusion_penalty = -0.5 if swerve_confusion else 0.0
-            reward = base_penalty + confusion_penalty
+            if action in INVALID_POLICY_ACTIONS:
+                reward = -1.0
+            elif predicted_label == true_label:
+                reward = 1.0
+            else:
+                reward = -1.0
 
         info = {
             "scenario_id":     self.current_sid,

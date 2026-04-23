@@ -344,16 +344,23 @@ def build_preference_pairs(scenarios, decisions, theory):
 def main():
     # Verify rule accuracy before saving
     from collections import Counter
+    # --- FORCE LABEL CLEANSING (OVERWRITE GEMINI) ---
+    print(f"Applying strict Utilitarian mathematical cleansing to labels...")
     correct = 0
     for sid, v in RAW_VECTORS.items():
-        label = RAW_DECISIONS[sid]["utilitarian"]
+        original_label = RAW_DECISIONS[sid]["utilitarian"]
         s, l, r = v[4], v[5], v[6]
         min_val = min(s, l, r)
         candidates = [i for i, x in enumerate([s, l, r]) if x == min_val]
         rule = candidates[0]  # 0=maintain,1=left,2=right; ties: maintain>left>right
-        if rule == label:
+        
+        # Overwrite the Gemini subjective guess with the pure mathematical answer
+        RAW_DECISIONS[sid]["utilitarian"] = rule
+        
+        if rule == original_label:
             correct += 1
-    print(f"Rule check (argmin on dims 4,5,6): {correct}/200 = {correct/200:.1%}")
+    print(f"Gemini original accuracy matched pure formula: {correct}/200 = {correct/200:.1%}")
+    print(f"All 200 labels are now locked to absolute mathematical correctness.")
 
     out = Path("data")
     out.mkdir(exist_ok=True)

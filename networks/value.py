@@ -9,9 +9,9 @@ class ValueNetwork(nn.Module):
 
     Architecture:
         Input:  40-dim state vector
-        Hidden: Linear(40 → 64) + ReLU
-        Hidden: Linear(64 → 32) + ReLU
-        Output: Linear(32 → 1)
+        Hidden: Linear(40 → 256) + ReLU
+        Hidden: Linear(256 → 128) + ReLU
+        Output: Linear(128 → 1)
 
     Output:
         A single scalar V(s) representing the expected return from the given state.
@@ -22,11 +22,11 @@ class ValueNetwork(nn.Module):
         #### Define layers
         
         # hidden layers
-        self.fc1 = nn.Linear(40, 64)
-        self.fc2 = nn.Linear(64, 32)
+        self.fc1 = nn.Linear(40, 256)
+        self.fc2 = nn.Linear(256, 128)
         
         # output value
-        self.fc3 = nn.Linear(32, 1)
+        self.fc3 = nn.Linear(128, 1)
 
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

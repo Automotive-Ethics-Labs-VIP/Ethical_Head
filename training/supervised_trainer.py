@@ -156,20 +156,23 @@ class SupervisedTrainer:
 
     # -------------------------------------------------------------------------
 
-    def train(self, epochs: int = 500, log_every: int = 50):
+    def train(self, epochs: int = 500, log_every: int = 25):
         """
         Train for `epochs` passes over the full training set.
 
         Args:
             epochs    : Number of full-dataset passes.
-            log_every : Print metrics every N epochs.
+            log_every : Print per-class breakdown every N epochs.
         """
-        print(f"\n{'='*60}")
-        print(f"SUPERVISED TRAINING  ({self.theory})")
-        print(f"{'='*60}")
-        print(f"  Epochs : {epochs}")
-        print(f"  Device : {self.device}")
-        print(f"{'='*60}\n")
+        W = 66
+        print(f"\n{'='*W}")
+        print(f"  SUPERVISED TRAINING  |  theory={self.theory}  |  epochs={epochs}")
+        print(f"{'='*W}")
+        print(f"  {'epoch':>6}  {'loss':>7}  "
+              f"{'train':>6}  {'test':>6}  "
+              f"{'maintain':>9}  {'swerve_left':>11}  {'swerve_right':>12}")
+        print(f"  {'-'*6}  {'-'*7}  {'-'*6}  {'-'*6}  "
+              f"{'-'*9}  {'-'*11}  {'-'*12}")
 
         best_test_acc = 0.0
 
@@ -197,22 +200,25 @@ class SupervisedTrainer:
                 best_test_acc = test_acc
                 self._save_checkpoint("best_checkpoint.pt")
 
-            if epoch % log_every == 0 or epoch == 1 or train_acc == 1.0:
-                print(f"  [epoch {epoch:4d}]  "
-                      f"loss={train_loss:.4f}  "
-                      f"train={train_acc:.1%}  "
-                      f"test={test_acc:.1%}")
+            should_log = (epoch % log_every == 0 or epoch == 1
+                          or train_acc == 1.0 and test_acc == 1.0)
+            if should_log:
+                cls = self.per_class_accuracy(self._test_states, self._test_targets)
+                maint = cls.get("maintain",     float("nan"))
+                left  = cls.get("swerve_left",  float("nan"))
+                right = cls.get("swerve_right", float("nan"))
+                print(f"  {epoch:>6}  {train_loss:>7.4f}  "
+                      f"{train_acc:>6.1%}  {test_acc:>6.1%}  "
+                      f"{maint:>9.1%}  {left:>11.1%}  {right:>12.1%}")
 
             if train_acc == 1.0 and test_acc == 1.0:
-                print(f"\n  100% on both splits reached at epoch {epoch}. Stopping.")
                 break
 
-        print(f"\n{'='*60}")
+        print(f"{'='*W}")
         print(f"  Best test accuracy : {best_test_acc:.1%}")
-        print(f"{'='*60}")
+        print(f"{'='*W}\n")
 
         self._save_checkpoint("final_checkpoint.pt")
-        self._print_per_class()
 
     # -------------------------------------------------------------------------
 
@@ -226,14 +232,3 @@ class SupervisedTrainer:
             "theory": self.theory,
         }, path)
 
-    def _print_per_class(self):
-        print("\n  Per-class accuracy on TEST split:")
-        for split_name, states, targets in [
-            ("train", self._train_states, self._train_targets),
-            ("test",  self._test_states,  self._test_targets),
-        ]:
-            cls_acc = self.per_class_accuracy(states, targets)
-            print(f"    [{split_name}]")
-            for label_name, acc in cls_acc.items():
-                bar = "#" * int(acc * 20) if not np.isnan(acc) else "N/A"
-                print(f"      {label_name:15s}  {acc:5.1%}  {bar}")

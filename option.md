@@ -101,3 +101,37 @@ supervised approach needs to be replaced with one that keeps the RLHF structure.
 
 To switch to Option B: revert to the `trainer_patched.py` training path and apply
 the reward shaping changes described above.
+
+---
+
+## Bugs Fixed (prior to this session — previously in CHANGELOG.md)
+
+### Bug 1 — Combined rewards bypassed in PPO advantage computation
+**Files:** `training/trainer.py`, `data/replay_buffer.py`
+
+`update_policy()` correctly computed `combined_rewards` (base + learned ethical
+reward) but never passed it anywhere. The subsequent call to
+`self.buffer.compute_advantages_and_returns()` ignored `combined_rewards` entirely
+and read raw rewards directly from `self.buffer.rewards`, cutting the reward model
+out of every training update.
+
+**Fix:** Added an optional `rewards` parameter to
+`ReplayBuffer.compute_advantages_and_returns()`. When provided, GAE uses this
+tensor instead of `self.rewards`. `update_policy()` now passes `combined_rewards`
+to that call so the reward model's signal propagates into PPO advantages as intended.
+
+---
+
+### Bug 2 — Mock environment used pure Gaussian noise as base reward
+**File:** `training/trainer.py` (`_step_environment`)
+
+`_step_environment()` set `reward = np.random.randn()` when no real environment
+was attached. This made `R_base` semantically meaningless, providing no gradient
+signal to guide the policy.
+
+**Fix:** Replaced the Gaussian sample with a structured mock reward:
+```python
+reward = float(np.clip(1.0 - 0.5 * abs(state[0]), -1.0, 1.0))
+```
+This rewards the agent for keeping `state[0]` (a speed/position proxy) near
+neutral, giving the policy a learnable signal without requiring a real environment.

@@ -143,43 +143,15 @@ class RLTrainer:
     # =========================================================================
 
     def _balance_preferences(self, preference_dataset: List) -> List:
+        """Pass through the preference dataset unmodified.
+
+        Inverse-frequency oversampling was removed because the death-count
+        shaped reward in EthicalScenarioEnv already gives the policy graded
+        signal proportional to how wrong each choice is. Artificially
+        reweighting the reward model training data on top of that added bias
+        against swerve_left (the majority class).
         """
-        Oversample preference pairs where the preferred action is swerve_left
-        so the reward model sees a balanced class distribution.
-
-        Without this the reward model sees 2x more swerve_right-preferred pairs
-        (because swerve_right is the preferred action in 2 rejected-action pairs
-        for each swerve_right scenario) which biases it against swerve_left.
-        """
-        from environments.ethical_env import POLICY_ACTION_TO_LABEL
-
-        left_pairs  = []
-        other_pairs = []
-
-        for traj_a, traj_b, pref in preference_dataset:
-            # traj_a is always the preferred trajectory (preference=1.0)
-            # actions_a[0] is the preferred policy action
-            preferred_action = int(traj_a[1][0].item())
-            preferred_label  = POLICY_ACTION_TO_LABEL.get(preferred_action, 0)
-
-            if preferred_label == 1:   # swerve_left
-                left_pairs.append((traj_a, traj_b, pref))
-            else:
-                other_pairs.append((traj_a, traj_b, pref))
-
-        if not left_pairs:
-            return preference_dataset
-
-        # Oversample swerve_left pairs to match the count of other pairs
-        import random as _random
-        target = len(other_pairs)
-        if len(left_pairs) < target:
-            oversampled = left_pairs * (target // len(left_pairs) + 1)
-            left_pairs  = oversampled[:target]
-
-        balanced = left_pairs + other_pairs
-        _random.shuffle(balanced)
-        return balanced
+        return preference_dataset
 
     # =========================================================================
     # Rollout collection (uses ethical env)

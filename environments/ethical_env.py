@@ -60,17 +60,9 @@ POLICY_ACTION_TO_LABEL = {
 # Actions that are never correct in the dataset
 INVALID_POLICY_ACTIONS = {1, 4}
 
-# ── Class-weighted rewards ────────────────────────────────────────────────────
-# Dataset label frequencies: maintain=30%, swerve_left=50%, swerve_right=20%
-# Inverse-frequency weights normalised so mean weight = 1.0
-# This compensates for the imbalance so swerve_left doesn't get overshadowed.
-_LABEL_FREQ  = {0: 0.30, 1: 0.50, 2: 0.20}
-_RAW_WEIGHTS = {k: 1.0 / v for k, v in _LABEL_FREQ.items()}
-_MEAN_WEIGHT = sum(_RAW_WEIGHTS.values()) / len(_RAW_WEIGHTS)
-CLASS_REWARD_WEIGHTS = {k: v / _MEAN_WEIGHT for k, v in _RAW_WEIGHTS.items()}
-# Resulting weights: maintain≈1.11, swerve_left≈0.67, swerve_right≈1.67
-# (swerve_right boosted most since it's rarest; left slightly dampened since
-#  it already dominates — this balances the gradient signal)
+# Label index → pedestrian-count dimension in the 40-D state vector
+# used by the death-count shaped reward.
+LABEL_TO_PED_DIM = {0: 4, 1: 5, 2: 6}  # maintain->dim4, left->dim5, right->dim6
 
 
 class EthicalScenarioEnv:
@@ -81,11 +73,10 @@ class EthicalScenarioEnv:
       reset() -> returns a 40-D state vector from a random training scenario
       step(action) -> returns (next_state, reward, done=True, info)
 
-    Reward shaping:
-      Correct action : +CLASS_REWARD_WEIGHT  (weighted by inverse class freq)
-      Wrong but valid: -CLASS_REWARD_WEIGHT * 0.5  (penalise wrong direction)
-      Swerve confusion (left<->right): extra -0.5 penalty
-      Invalid action (1 or 4): -1.0
+    Reward shaping (death-count based):
+      Correct action : +1.0
+      Wrong action   : -(deaths_chosen - deaths_optimal)  e.g. -3 if 4 peds chosen vs 1 optimal
+      Invalid action (1 or 4): -5.0
     """
 
     def __init__(
@@ -111,8 +102,8 @@ class EthicalScenarioEnv:
 
         print(f"EthicalScenarioEnv: {len(self.scenario_ids)} {split} scenarios "
               f"| theory={theory}")
-        print(f"  Class reward weights: "
-              + "  ".join(f"label{k}={v:.2f}" for k, v in CLASS_REWARD_WEIGHTS.items()))
+        print(f"  Reward: death-count shaped  "
+              f"(correct=+1, wrong=-(deaths_chosen - deaths_optimal), invalid=-5)")
 
     # -------------------------------------------------------------------------
     def reset(self) -> np.ndarray:
@@ -127,29 +118,23 @@ class EthicalScenarioEnv:
 
         predicted_label = POLICY_ACTION_TO_LABEL[action]
         true_label      = self.current_label
-        weight          = CLASS_REWARD_WEIGHTS[true_label]
+
+        # Pedestrian counts for each path from the current state vector
+        state = np.array(self.scenarios[self.current_sid], dtype=np.float32)
+        peds  = [state[4], state[5], state[6]]  # [maintain, swerve_left, swerve_right]
 
         if action in INVALID_POLICY_ACTIONS:
             # Actions 1/4 never appear in data — hard penalty
-            reward = -1.0
+            reward = -5.0
 
         elif predicted_label == true_label:
-            # Correct — scale reward by inverse class frequency
-            reward = +weight
+            reward = +1.0
 
         else:
-            # Wrong direction — penalise proportionally
-            base_penalty = -weight * 0.5
-
-            # Extra penalty for confusing swerve directions (left vs right)
-            # This is the main bug we're fixing: model was guessing swerve_right
-            # for swerve_left scenarios because both are "swerve" actions
-            swerve_confusion = (
-                (true_label == 1 and predicted_label == 2) or  # left predicted as right
-                (true_label == 2 and predicted_label == 1)     # right predicted as left
-            )
-            confusion_penalty = -0.5 if swerve_confusion else 0.0
-            reward = base_penalty + confusion_penalty
+            # Graded penalty: how many extra deaths did this choice cause?
+            deaths_chosen  = peds[predicted_label]
+            deaths_optimal = peds[true_label]
+            reward = -(deaths_chosen - deaths_optimal)
 
         info = {
             "scenario_id":     self.current_sid,

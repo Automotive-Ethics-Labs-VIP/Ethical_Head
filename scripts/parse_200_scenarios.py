@@ -448,6 +448,9 @@ def build_preference_pairs(scenarios, decisions, theory):
     return pairs
 
 def main():
+    for sid, v in RAW_VECTORS.items():
+        v[6] = v[1]
+    
     out = Path("data")
     out.mkdir(exist_ok=True)
     (out / "preferences").mkdir(exist_ok=True)

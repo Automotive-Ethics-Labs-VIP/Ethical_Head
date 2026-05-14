@@ -60,9 +60,7 @@ POLICY_ACTION_TO_LABEL = {
 # Actions that are never correct in the dataset
 INVALID_POLICY_ACTIONS = {1, 4}
 
-# Label index → pedestrian-count dimension in the 40-D state vector
-# used by the death-count shaped reward.
-LABEL_TO_PED_DIM = {0: 4, 1: 5, 2: 6}  # maintain->dim4, left->dim5, right->dim6
+# Class weights removed for direct utilitarian logic
 
 
 class EthicalScenarioEnv:
@@ -73,10 +71,11 @@ class EthicalScenarioEnv:
       reset() -> returns a 40-D state vector from a random training scenario
       step(action) -> returns (next_state, reward, done=True, info)
 
-    Reward shaping (death-count based):
-      Correct action : +1.0
-      Wrong action   : -(deaths_chosen - deaths_optimal)  e.g. -3 if 4 peds chosen vs 1 optimal
-      Invalid action (1 or 4): -5.0
+    Reward shaping:
+      Correct action : +CLASS_REWARD_WEIGHT  (weighted by inverse class freq)
+      Wrong but valid: -CLASS_REWARD_WEIGHT * 0.5  (penalise wrong direction)
+      Swerve confusion (left<->right): extra -0.5 penalty
+      Invalid action (1 or 4): -1.0
     """
 
     def __init__(
@@ -102,39 +101,47 @@ class EthicalScenarioEnv:
 
         print(f"EthicalScenarioEnv: {len(self.scenario_ids)} {split} scenarios "
               f"| theory={theory}")
-        print(f"  Reward: death-count shaped  "
-              f"(correct=+1, wrong=-(deaths_chosen - deaths_optimal), invalid=-5)")
 
     # -------------------------------------------------------------------------
     def reset(self) -> np.ndarray:
         self.current_sid   = random.choice(self.scenario_ids)
         self.current_label = self.decisions[self.current_sid][self.theory]
         self._step_count   = 0
-        return np.array(self.scenarios[self.current_sid], dtype=np.float32)
+
+        state = np.array(self.scenarios[self.current_sid], dtype=np.float32)
+        return state
 
     # -------------------------------------------------------------------------
     def step(self, action: int) -> Tuple[np.ndarray, float, bool, Dict]:
         self._step_count += 1
 
         predicted_label = POLICY_ACTION_TO_LABEL[action]
-        true_label      = self.current_label
+        state = self.scenarios[self.current_sid]
+        true_label = self.current_label
 
-        # Pedestrian counts for each path from the current state vector
-        state = np.array(self.scenarios[self.current_sid], dtype=np.float32)
-        peds  = [state[4], state[5], state[6]]  # [maintain, swerve_left, swerve_right]
+        if self.theory == "utilitarian":
+            if action in INVALID_POLICY_ACTIONS:
+                reward = -20.0
+            else:
+                num_ped_straight = state[4]
+                num_ped_left     = state[5]
+                num_ped_right    = state[6]
 
-        if action in INVALID_POLICY_ACTIONS:
-            # Actions 1/4 never appear in data — hard penalty
-            reward = -5.0
-
-        elif predicted_label == true_label:
-            reward = +1.0
-
+                if predicted_label == 0:
+                    reward = -float(num_ped_straight)
+                elif predicted_label == 1:
+                    reward = -float(num_ped_left)
+                elif predicted_label == 2:
+                    reward = -float(num_ped_right)
+                else:
+                    reward = -20.0
         else:
-            # Graded penalty: how many extra deaths did this choice cause?
-            deaths_chosen  = peds[predicted_label]
-            deaths_optimal = peds[true_label]
-            reward = -(deaths_chosen - deaths_optimal)
+            if action in INVALID_POLICY_ACTIONS:
+                reward = -1.0
+            elif predicted_label == true_label:
+                reward = 1.0
+            else:
+                reward = -1.0
 
         info = {
             "scenario_id":     self.current_sid,
